@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CitationGrabber</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f1117;
+    --surface:  #1a1d27;
+    --border:   #2a2d3a;
+    --accent:   #6c8fff;
+    --accent2:  #a78bfa;
+    --success:  #34d399;
+    --text:     #e8eaf0;
+    --muted:    #8b8fa8;
+    --radius:   10px;
+    --font:     'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    width: 400px;
+    min-height: 200px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 16px;
+  }
+
+  /* ── header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .logo {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    letter-spacing: -.01em;
+  }
+  .header-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* ── style picker ── */
+  .style-row {
+    display: flex; gap: 6px; margin-bottom: 14px;
+  }
+  .style-btn {
+    flex: 1; padding: 7px 0;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: var(--font);
+  }
+  .style-btn:hover { border-color: var(--accent); color: var(--text); }
+  .style-btn.active {
+    border-color: var(--accent);
+    background: #1e2640;
+    color: var(--accent);
+  }
+
+  /* ── generate button ── */
+  .gen-btn {
+    width: 100%; padding: 10px;
+    border: none; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; margin-bottom: 14px;
+    transition: opacity .15s;
+    font-family: var(--font);
+    letter-spacing: .01em;
+  }
+  .gen-btn:hover { opacity: .88; }
+  .gen-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── status / loading ── */
+  .status {
+    text-align: center; color: var(--muted);
+    font-size: 12px; padding: 8px 0;
+    display: none;
+  }
+
+  /* ── citation output ── */
+  .citation-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 10px;
+    display: none;
+  }
+  .citation-label {
+    font-size: 10px; font-weight: 600;
+    color: var(--muted); letter-spacing: .07em;
+    text-transform: uppercase; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .citation-text {
+    line-height: 1.6; color: var(--text);
+    font-size: 12.5px; word-break: break-word;
+    user-select: all;
+  }
+  .citation-text em { font-style: italic; }
+
+  /* ── copy button ── */
+  .copy-btn {
+    background: #252840; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 6px;
+    padding: 2px 9px; font-size: 11px; cursor: pointer;
+    font-family: var(--font); transition: all .15s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+  /* ── in-text ── */
+  .intext-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    display: none;
+  }
+  .intext-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .intext-text  { font-size: 12px; color: var(--text); flex: 1; user-select: all; }
+
+  /* ── source info ── */
+  .source-info {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 10px;
+    display: none;
+  }
+  .source-field {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 11.5px; margin-bottom: 4px;
+  }
+  .source-field:last-child { margin-bottom: 0; }
+  .source-key { color: var(--muted); min-width: 56px; }
+  .source-val { color: var(--text); word-break: break-all; }
+  .missing-warn {
+    display: none;
+    background: #2a1f0f; border: 1px solid #5a3a10;
+    border-radius: 8px; padding: 9px 12px;
+    font-size: 11.5px; color: #f5c36a;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  /* ── saved list ── */
+  .saved-section { margin-top: 6px; display: none; }
+  .saved-header {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .clear-btn {
+    background: none; border: none; color: var(--muted);
+    font-size: 11px; cursor: pointer; font-family: var(--font);
+  }
+  .clear-btn:hover { color: #f87171; }
+  .saved-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .saved-item-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-copy { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .saved-copy:hover { color: var(--text); }
+
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+  .error-msg { color: #f87171; font-size: 12px; text-align: center; display: none; padding: 6px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">📚</div>
+  <div class="header-text">
+    <h1>CitationGrabber</h1>
+    <p>Auto-generates citations from any webpage</p>
+  </div>
+</div>
+
+<!-- Style selector -->
+<div class="style-row">
+  <button class="style-btn active" data-style="MLA">MLA 9th</button>
+  <button class="style-btn" data-style="APA">APA 7th</button>
+  <button class="style-btn" data-style="Chicago">Chicago 17th</button>
+</div>
+
+<button class="gen-btn" id="genBtn">Generate Citation</button>
+
+<div class="status" id="status">Scanning page…</div>
+<div class="error-msg" id="errorMsg"></div>
+
+<!-- Missing field warning -->
+<div class="missing-warn" id="missingWarn"></div>
+
+<!-- Source summary -->
+<div class="source-info" id="sourceInfo">
+  <div class="source-field"><span class="source-key">Title</span><span class="source-val" id="si-title"></span></div>
+  <div class="source-field"><span class="source-key">Author(s)</span><span class="source-val" id="si-authors"></span></div>
+  <div class="source-field"><span class="source-key">Published</span><span class="source-val" id="si-date"></span></div>
+  <div class="source-field"><span class="source-key">Site</span><span class="source-val" id="si-site"></span></div>
+</div>
+
+<!-- Main citation output -->
+<div class="citation-card" id="citationCard">
+  <div class="citation-label">
+    <span id="citationStyleLabel">MLA 9th Edition</span>
+    <button class="copy-btn" id="copyMain">Copy</button>
+  </div>
+  <div class="citation-text" id="citationText"></div>
+</div>
+
+<!-- In-text / footnote -->
+<div class="intext-row" id="intextRow">
+  <span class="intext-label" id="intextLabel">In-text:</span>
+  <span class="intext-text" id="intextText"></span>
+  <button class="copy-btn" id="copyIntext">Copy</button>
+</div>
+
+<!-- Save button -->
+<button class="gen-btn" id="saveBtn" style="display:none;background:linear-gradient(135deg,#2e8a57,#34d399);margin-bottom:0">
+  Save to list
+</button>
+
+<div class="divider" id="savedDivider" style="display:none"></div>
+
+<!-- Saved citations list -->
+<div class="saved-section" id="savedSection">
+  <div class="saved-header">
+    <span>Saved citations</span>
+    <button class="clear-btn" id="clearBtn">Clear all</button>
+  </div>
+  <div id="savedList"></div>
+</div>
+
+<script src="citations.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
